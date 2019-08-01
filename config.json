@@ -1,0 +1,17 @@
+[
+    {
+        "sid" : 1,
+        "name": "server_#sid",
+        "outer_host": "10.6.60.181",
+        "inner_host": "0.0.0.0",
+        "thread": 1,
+        "startup": "main.lua",
+        "services": [
+            {
+                "unique": true,
+                "name": "login",
+                "file": "app/service.lua"
+            }
+        ]
+    }
+]
