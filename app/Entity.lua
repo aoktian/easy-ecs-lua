@@ -1,12 +1,21 @@
-local M = class("Entity")
+local M = {}
+M.__cname = "Entity"
+M.__index = M
 
-function M:ctor(ctx)
-    if ctx then
-        self.ctx = ctx
+function M.new(conf)
+    local rtn = {}
+    rtn.uid = 0
+    rtn.comps = {}
+
+    if conf then
+        setmetatable(rtn, {__index = function(_, k)
+            return rawget(M, k) or conf[k]
+        end})
+    else
+        setmetatable(rtn, M)
     end
 
-    self.uid = 0
-    self.comps = {}
+    return rtn
 end
 
 -- TODO 检查配置里的这个值
@@ -18,16 +27,17 @@ function M:create_index_key(k, v)
 
     if not self.ctx then return end
 
-    if not self.ctx:is_idx(k) then return end
     if oldv then--移除原先的
-        local g = self.ctx:get_idx_vs(k, oldv)
-        g:remove(self)
-        if g:size() == 0 then
-            --TODO 要不要清除g
+        local g = self.ctx:is_idx_vs(k, oldv)
+        if g then
+            g[self] = nil
+            if not next(g) then
+                self.ctx:del_idx_vs(k, oldv)
+            end
         end
     end
     local g = self.ctx:get_idx_vs(k, v)
-    g:insert(self)
+    g[self] = true
 end
 
 -- 删除索引
@@ -40,8 +50,8 @@ function M:delete_index_key(k)
 
     local g = self.ctx:is_idx_vs(k, oldv)
     if not g then return end
-    g:remove(self)
-    if g:size() == 0 then
+    g[self] = nil
+    if not next(g) then
         self.ctx:del_idx_vs(k, oldv)
     end
 end
@@ -101,7 +111,7 @@ function M:add(comp, args)
     if not self.ctx then return end
     local g = self.ctx:isget_group(comp)
     if not g then return end
-    g:insert(self)
+    g[self] = true
 end
 
 -- 移除聚类
@@ -113,7 +123,7 @@ function M:remove(comp)
     if not self.ctx then return end
     local g = self.ctx:isget_group(comp)
     if g then
-        g:remove(self)
+        g[self] = nil
     end
 end
 
@@ -155,8 +165,8 @@ function M:destroy()
 
     for k, gs in pairs(ctx._idxs) do
         if self[k] and gs[self[k]] then
-            gs[self[k]]:remove(self)
-            if gs[self[k]]:size() == 0 then
+            gs[self[k]][self] = nil
+            if not next(gs[self[k]]) then
                 gs[self[k]] = nil
             end
             if not next(gs) then
@@ -164,6 +174,9 @@ function M:destroy()
             end
         end
     end
+
+    self.is_enabled = false
+
 end
 
 return M

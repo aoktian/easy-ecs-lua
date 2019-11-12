@@ -1,6 +1,4 @@
-local set = require("base.set")
 local Entity = require("app.Entity")
-
 local M = class("Context")
 
 function M:ctor()
@@ -16,16 +14,12 @@ function M:get_uuid()
     return self._uuid
 end
 
-function M:create_entity(uid)
-    local entity = Entity.new(self)
+function M:create_entity(conf)
+    local entity = Entity.new(conf)
+    entity.ctx = self
 
-    if uid then
-        --外部逻辑要保证唯一
-        entity.uid = uid
-    else
-        self._uuid = self._uuid + 1
-        entity.uid = self._uuid
-    end
+    self._uuid = self._uuid + 1
+    entity.uid = self._uuid
 
     self.entities[entity.uid] = entity
 
@@ -65,28 +59,30 @@ function M:get_idx(k)
             if not v then break end
             local g = idx[v]
             if not g then
-                g = set.new(true)
+                g = {}
                 idx[v] = g
             end
-            g:insert(entity)
+            g[entity] = true
         until true end
     end
 
     return idx
 end
 
+-- 不会创建，只检查
 function M:is_idx_vs(k, v)
-    local idx = self:get_idx(k)
-    return idx[v]
+    if not self._idxs[k] then return end
+    return self._idxs[k][v]
 end
+-- 如果没有会创建
 function M:get_idx_vs(k, v)
     local idx = self:get_idx(k)
     if not idx[v] then
-        idx[v] = set.new(true)
+        idx[v] = {}
         for _, entity in pairs(self.entities) do repeat
             if not entity[k] then break end
             if entity[k] ~= v then break end
-            idx[v]:insert(entity)
+            idx[v][entity] = true
         until true end
     end
 
@@ -134,10 +130,10 @@ end
 function M:get_group(comp)
     local g = self._groups[comp]
     if not g then
-        g = set.new(true)
+        g = {}
         for _, entity in pairs(self.entities) do repeat
             if not entity:has(comp) then break end
-            g:insert(entity)
+            g[entity] = true
         until true end
 
         self._groups[comp] = g

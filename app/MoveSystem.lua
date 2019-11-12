@@ -8,9 +8,9 @@ function M:init(ctx)
 end
 
 function M:update(dt)
-    self.matcher:foreach(function(ref)
+    for ref in pairs(self.matcher) do
         self:run(ref, dt)
-    end)
+    end
 end
 
 function M:run(ref, dt)
